@@ -25,6 +25,8 @@ class BLOCK {
              cpu,
              instr_id;
 
+    uint8_t mem_data[8];
+    uint8_t mem_data_valid[8];
     // replacement state
     uint32_t lru;
 
@@ -46,6 +48,11 @@ class BLOCK {
         cpu = 0;
         instr_id = 0;
 
+        for (int i =0;i<8;i++)
+        {
+            mem_data[i]=0;
+            mem_data_valid[i]=0;
+        }
         lru = 0;
     };
 };
@@ -65,8 +72,6 @@ class PACKET {
   public:
     uint8_t instruction, 
             is_data,
-            fill_l1i,
-            fill_l1d,
             tlb_access,
             scheduled,
             translated,
@@ -114,11 +119,12 @@ class PACKET {
              event_cycle,
              cycle_enqueued;
 
+    uint8_t mem_data[8];
+    uint8_t mem_data_valid[8];
+
     PACKET() {
         instruction = 0;
         is_data = 1;
-	fill_l1i = 0;
-	fill_l1d = 0;
         tlb_access = 0;
         scheduled = 0;
         translated = 0;
@@ -165,6 +171,12 @@ class PACKET {
         ip = 0;
         event_cycle = UINT64_MAX;
 	cycle_enqueued = 0;
+        for (int i =0;i<8;i++)
+        {
+            mem_data[i]=0;
+            mem_data_valid[i]=0;
+        }
+
     };
 };
 
@@ -338,6 +350,9 @@ class LSQ_ENTRY {
     uint8_t translated,
             fetched,
             asid[2];
+    uint8_t mem_data[8];
+    uint8_t mem_data_valid[8];
+
 // forwarding_depend_on_me[ROB_SIZE];
     fastset
 		forwarding_depend_on_me;
@@ -359,6 +374,11 @@ class LSQ_ENTRY {
         fetched = 0;
         asid[0] = UINT8_MAX;
         asid[1] = UINT8_MAX;
+        for(int i=0; i<8;i++)
+        {
+            mem_data[i]=0;
+            mem_data_valid[i]=0;
+        }
 
 #if 0
         for (uint32_t i=0; i<ROB_SIZE; i++)

@@ -1,5 +1,6 @@
 #include "ooo_cpu.h"
 #include "set.h"
+#include "champsim.h"
 
 // out-of-order core
 O3_CPU ooo_cpu[NUM_CPUS]; 
@@ -49,6 +50,9 @@ void O3_CPU::read_from_trace()
                 arch_instr.is_branch = current_cloudsuite_instr.is_branch;
                 arch_instr.branch_taken = current_cloudsuite_instr.branch_taken;
 
+                /*for(int i=0;i<8;i++)
+                    arch_instr.mem_data[i]= current_cloudsuite_instr.mem_data[i];
+                */
                 arch_instr.asid[0] = current_cloudsuite_instr.asid[0];
                 arch_instr.asid[1] = current_cloudsuite_instr.asid[1];
 
@@ -178,6 +182,8 @@ void O3_CPU::read_from_trace()
                 arch_instr.is_branch = current_instr.is_branch;
                 arch_instr.branch_taken = current_instr.branch_taken;
 
+                
+
                 arch_instr.asid[0] = cpu;
                 arch_instr.asid[1] = cpu;
 
@@ -192,6 +198,12 @@ void O3_CPU::read_from_trace()
                     arch_instr.destination_registers[i] = current_instr.destination_registers[i];
                     arch_instr.destination_memory[i] = current_instr.destination_memory[i];
                     arch_instr.destination_virtual_address[i] = current_instr.destination_memory[i];
+                    arch_instr.d_value[i][(current_instr.destination_memory[i]%64)/8]=current_instr.d_value[i][(current_instr.destination_memory[i]%64)/8];
+
+                    arch_instr.d_valid[i][(current_instr.destination_memory[i]%64)/8]=current_instr.d_valid[i][(current_instr.destination_memory[i]%64)/8];
+                    
+                    
+
 
 		    switch(arch_instr.destination_registers[i])
 		      {
@@ -240,7 +252,10 @@ void O3_CPU::read_from_trace()
                     arch_instr.source_registers[i] = current_instr.source_registers[i];
                     arch_instr.source_memory[i] = current_instr.source_memory[i];
                     arch_instr.source_virtual_address[i] = current_instr.source_memory[i];
-
+                    arch_instr.s_value[i][(current_instr.source_memory[i]%64)/8]=current_instr.s_value[i][(current_instr.source_memory[i]%64)/8];
+                    arch_instr.s_valid[i][(current_instr.source_memory[i]%64)/8]=current_instr.s_valid[i][(current_instr.source_memory[i]%64)/8];
+                    
+                   
 		    switch(arch_instr.source_registers[i])
                       {
                       case 0:
@@ -584,7 +599,6 @@ void O3_CPU::fetch_instruction()
 	  trace_packet.is_data = 0;
 	  trace_packet.tlb_access = 1;
 	  trace_packet.fill_level = FILL_L1;
-	  trace_packet.fill_l1i = 1;
 	  trace_packet.cpu = cpu;
 	  trace_packet.address = IFETCH_BUFFER.entry[index].ip >> LOG2_PAGE_SIZE;
 	  if (knob_cloudsuite)
@@ -601,6 +615,7 @@ void O3_CPU::fetch_instruction()
 	  trace_packet.asid[1] = 0;
 	  trace_packet.event_cycle = current_core_cycle[cpu];
 	  
+
 	  int rq_index = ITLB.add_rq(&trace_packet);
 
 	  if(rq_index != -2)
@@ -625,7 +640,6 @@ void O3_CPU::fetch_instruction()
 	  fetch_packet.instruction = 1;
 	  fetch_packet.is_data = 0;
 	  fetch_packet.fill_level = FILL_L1;
-	  fetch_packet.fill_l1i = 1;
 	  fetch_packet.cpu = cpu;
 	  fetch_packet.address = IFETCH_BUFFER.entry[index].instruction_pa >> 6;
 	  fetch_packet.instruction_pa = IFETCH_BUFFER.entry[index].instruction_pa;
@@ -814,7 +828,6 @@ int O3_CPU::prefetch_code_line(uint64_t ip, uint64_t pf_addr)
       pf_packet.instruction = 1; // this is a code prefetch
       pf_packet.is_data = 0;
       pf_packet.fill_level = FILL_L1;
-      pf_packet.fill_l1i = 1;
       pf_packet.pf_origin_level = FILL_L1;
       pf_packet.cpu = cpu;
 
@@ -1227,6 +1240,11 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
     LQ.entry[lq_index].event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
     LQ.occupancy++;
 
+    for(int i=0;i<8;i++)
+    {
+        LQ.entry[lq_index].mem_data[i]=ROB.entry[rob_index].d_value[data_index][i];
+        LQ.entry[lq_index].mem_data_valid[i]=ROB.entry[rob_index].d_valid[data_index][i];
+    }
     // check RAW dependency
     int prior = rob_index - 1;
     if (prior < 0)
@@ -1410,6 +1428,12 @@ void O3_CPU::add_store_queue(uint32_t rob_index, uint32_t data_index)
     SQ.entry[sq_index].asid[1] = ROB.entry[rob_index].asid[1];
     SQ.entry[sq_index].event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
 
+    for(int i=0;i<8;i++)
+    {
+        SQ.entry[sq_index].mem_data[i]=ROB.entry[rob_index].s_value[data_index][i];
+        SQ.entry[sq_index].mem_data_valid[i]=ROB.entry[rob_index].s_valid[data_index][i];
+    }
+
     SQ.occupancy++;
     SQ.tail++;
     if (SQ.tail == SQ.SIZE)
@@ -1449,7 +1473,6 @@ void O3_CPU::operate_lsq()
 
                 data_packet.tlb_access = 1;
                 data_packet.fill_level = FILL_L1;
-                data_packet.fill_l1d = 1;
                 data_packet.cpu = cpu;
                 data_packet.data_index = SQ.entry[sq_index].data_index;
                 data_packet.sq_index = sq_index;
@@ -1465,6 +1488,12 @@ void O3_CPU::operate_lsq()
                 data_packet.asid[0] = SQ.entry[sq_index].asid[0];
                 data_packet.asid[1] = SQ.entry[sq_index].asid[1];
                 data_packet.event_cycle = SQ.entry[sq_index].event_cycle;
+
+                for(int i=0;i<8;i++)
+                {
+                    data_packet.mem_data[i]=SQ.entry[sq_index].mem_data[i];
+                    data_packet.mem_data_valid[i]=SQ.entry[sq_index].mem_data_valid[i];
+                }
 
                 DP (if (warmup_complete[cpu]) {
                 cout << "[RTS0] " << __func__ << " instr_id: " << SQ.entry[sq_index].instr_id << " rob_index: " << SQ.entry[sq_index].rob_index << " is popped from to RTS0";
@@ -1532,7 +1561,6 @@ void O3_CPU::operate_lsq()
                 // add it to DTLB
                 PACKET data_packet;
                 data_packet.fill_level = FILL_L1;
-                data_packet.fill_l1d = 1;
                 data_packet.cpu = cpu;
                 data_packet.data_index = LQ.entry[lq_index].data_index;
                 data_packet.lq_index = lq_index;
@@ -1548,6 +1576,12 @@ void O3_CPU::operate_lsq()
                 data_packet.asid[0] = LQ.entry[lq_index].asid[0];
                 data_packet.asid[1] = LQ.entry[lq_index].asid[1];
                 data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
+                for(int i=0;i<8;i++)
+                {
+                    data_packet.mem_data[i]=LQ.entry[lq_index].mem_data[i];
+                    data_packet.mem_data_valid[i]=LQ.entry[lq_index].mem_data_valid[i];
+                }
+
 
                 DP (if (warmup_complete[cpu]) {
                 cout << "[RTL0] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " rob_index: " << LQ.entry[lq_index].rob_index << " is popped to RTL0";
@@ -1687,7 +1721,6 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
     // add it to L1D
     PACKET data_packet;
     data_packet.fill_level = FILL_L1;
-    data_packet.fill_l1d = 1;
     data_packet.cpu = cpu;
     data_packet.data_index = LQ.entry[lq_index].data_index;
     data_packet.lq_index = lq_index;
@@ -1700,6 +1733,12 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
     data_packet.asid[0] = LQ.entry[lq_index].asid[0];
     data_packet.asid[1] = LQ.entry[lq_index].asid[1];
     data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
+
+    for(int i=0;i<8;i++)
+    {
+        data_packet.mem_data[i]=LQ.entry[lq_index].mem_data[i];
+        data_packet.mem_data_valid[i]=LQ.entry[lq_index].mem_data_valid[i];
+    }
 
     int rq_index = L1D.add_rq(&data_packet);
 
@@ -2226,6 +2265,53 @@ void O3_CPU::retire_rob()
             return;
         }
 
+        for(uint32_t i =0;i<NUM_INSTR_DESTINATIONS_SPARC;i++)
+        {
+            if(ROB.entry[ROB.head].destination_memory[i])
+            {
+            uint32_t temp_pa = va_to_pa(ROB.cpu,ROB.entry[ROB.head].instr_id, ROB.entry[ROB.head].destination_memory[i], ROB.entry[ROB.head].destination_memory[i]>>LOG2_BLOCK_SIZE, 0);
+            temp_pa >>= LOG2_PAGE_SIZE;
+            temp_pa <<= LOG2_PAGE_SIZE;
+            temp_pa |= (ROB.entry[ROB.head].destination_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1)); 
+            
+            //uint32_t temp_pa= (ROB.entry[ROB.head].data_pa << LOG2_PAGE_SIZE) | ( ROB.entry[ROB.head].destination_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
+            map <uint64_t, uint64_t>::iterator mm_check = memory_map.find(temp_pa);
+            if(mm_check == memory_map.end())
+            {
+                memory_map.insert(pair<uint64_t,uint64_t>(temp_pa,ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)/8]));           
+            }        
+            else
+            {
+                mm_check->second=ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)/8];            
+            }
+            }        
+            
+        }
+        for(uint32_t i =0;i<NUM_INSTR_SOURCES;i++)
+        {
+            if(ROB.entry[ROB.head].source_memory[i])
+            {
+            uint32_t temp_pa = va_to_pa(ROB.cpu,ROB.entry[ROB.head].instr_id, ROB.entry[ROB.head].source_memory[i], ROB.entry[ROB.head].source_memory[i]>>LOG2_BLOCK_SIZE, 0);
+            temp_pa >>= LOG2_PAGE_SIZE;
+            temp_pa <<= LOG2_PAGE_SIZE;
+            temp_pa |= (ROB.entry[ROB.head].source_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
+            
+            //uint32_t temp_pa=(ROB.entry[ROB.head].data_pa << LOG2_PAGE_SIZE) | ( ROB.entry[ROB.head].source_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
+
+            map <uint64_t, uint64_t>::iterator mm_check = memory_map.find(temp_pa);
+            if(mm_check == memory_map.end())
+            {
+                memory_map.insert(pair<uint64_t,uint64_t>(temp_pa,ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)/8]));           
+            }        
+            else
+            {
+                mm_check->second=ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)/8];            
+            }
+            }        
+            
+        }
+
+
         // check store instruction
         uint32_t num_store = 0;
         for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
@@ -2244,7 +2330,6 @@ void O3_CPU::retire_rob()
                         // sq_index and rob_index are no longer available after retirement
                         // but we pass this information to avoid segmentation fault
                         data_packet.fill_level = FILL_L1;
-                        data_packet.fill_l1d = 1;
                         data_packet.cpu = cpu;
                         data_packet.data_index = SQ.entry[sq_index].data_index;
                         data_packet.sq_index = sq_index;
@@ -2257,6 +2342,11 @@ void O3_CPU::retire_rob()
                         data_packet.asid[0] = SQ.entry[sq_index].asid[0];
                         data_packet.asid[1] = SQ.entry[sq_index].asid[1];
                         data_packet.event_cycle = current_core_cycle[cpu];
+                        for(int i=0;i<8;i++)
+                        {
+                            data_packet.mem_data[i]=SQ.entry[sq_index].mem_data[i];
+                            data_packet.mem_data_valid[i]=SQ.entry[sq_index].mem_data_valid[i];
+                        }
 
                         L1D.add_wq(&data_packet);
                     }

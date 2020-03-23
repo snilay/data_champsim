@@ -25,6 +25,7 @@ queue <uint64_t > page_queue;
 map <uint64_t, uint64_t> page_table, inverse_table, recent_page, unique_cl[NUM_CPUS];
 uint64_t previous_ppage, num_adjacent_page, num_cl[NUM_CPUS], allocated_pages, num_page[NUM_CPUS], minor_fault[NUM_CPUS], major_fault[NUM_CPUS];
 
+map<uint64_t, uint64_t> memory_map;
 void record_roi_stats(uint32_t cpu, CACHE *cache)
 {
     for (uint32_t i=0; i<NUM_TYPES; i++) {
@@ -695,7 +696,6 @@ int main(int argc, char** argv)
         ooo_cpu[i].L1I.MAX_READ = 2;
         ooo_cpu[i].L1I.fill_level = FILL_L1;
         ooo_cpu[i].L1I.lower_level = &ooo_cpu[i].L2C; 
-        ooo_cpu[i].l1i_prefetcher_initialize();
 
         ooo_cpu[i].L1D.cpu = i;
         ooo_cpu[i].L1D.cache_type = IS_L1D;
@@ -862,6 +862,64 @@ int main(int argc, char** argv)
                 record_roi_stats(i, &ooo_cpu[i].L1I);
                 record_roi_stats(i, &ooo_cpu[i].L2C);
                 record_roi_stats(i, &uncore.LLC);
+
+                map<uint64_t,uint64_t>::iterator mm = memory_map.begin();
+
+                for (mm = memory_map.begin(); mm != memory_map.end(); mm++) {   
+                    
+                    uint64_t check_addr = (mm->first);
+                    /*cout<<hex<<check_addr<<endl;
+                    mm++;
+                    cout<<(mm->first)<<endl;
+
+                    map<uint64_t,uint64_t>::iterator pg = page_table.begin();
+                    for(pg=page_table.begin();pg!=page_table.end();pg++)
+                    {
+                        cout<<hex<<pg->first<<" "<<pg->second<<endl;
+                    }
+                    break;
+                    //cout<<hex<<check_addr<<endl;
+                    */
+                    uint32_t way;
+                    uint32_t set = ooo_cpu[i].L1D.get_set(check_addr>>LOG2_BLOCK_SIZE);
+                    for(way=0;way<L1D_WAY;way++)
+                    {
+                        //cout<<hex<<ooo_cpu[i].L1D.block[set][way].tag<<" "<<(check_addr)<<endl;
+                        if((ooo_cpu[i].L1D.block[set][way].full_addr == check_addr))   
+                            break;
+                        //map <uint64_t, uint64_t>::iterator mm_check = memory_map.find(ooo_cpu[i].L1D.block[j][k].tag)
+                    }
+                    //cout<<set<<endl;
+                    //cout<<way<<endl;
+                    if(way!=L1D_WAY)
+                    {   
+                        cout<<"in L1"<<endl;
+                        if(ooo_cpu[i].L1D.block[set][way].mem_data[((check_addr%64)/8)] == mm->second)
+                            cout<<"Match"<<endl;    
+                    }
+                    else
+                    {
+                        /*set = ooo_cpu[i].L2C.get_set(check_addr >> LOG2_BLOCK_SIZE);
+                        way = ooo_cpu[i].L2C.get_way(check_addr >> LOG2_BLOCK_SIZE , set);
+                        if(way!=L2C_WAY)
+                        {
+                            if(ooo_cpu[i].L2C.block[set][way].mem_data[((check_addr%64)/8)] == mm->second)
+                            cout<<"Match"<<endl;
+                        }
+                        else
+                        {
+                            set = uncore.LLC.get_set(check_addr >> LOG2_BLOCK_SIZE);
+                            way = uncore.LLC.get_way(check_addr >> LOG2_BLOCK_SIZE , set);
+                            if(way!=LLC_WAY)
+                            {
+                                if(uncore.LLC.block[set][way].mem_data[((check_addr%64)/8)] == mm->second)
+                                cout<<"Match"<<endl;
+                            }
+                        
+                        }*/
+                    }
+                
+                }
 
                 all_simulation_complete++;
             }
