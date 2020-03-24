@@ -246,7 +246,7 @@ void CACHE::handle_writeback()
             block[set][way].dirty = 1;
             for(int i =0; i<8; i++)
             {
-                if(WQ.entry[index].mem_data_valid)
+                if(WQ.entry[index].mem_data_valid[i])
                 {
                     block[set][way].mem_data[i] = WQ.entry[index].mem_data[i];
                     block[set][way].mem_data_valid[i]=1;
@@ -481,7 +481,7 @@ void CACHE::handle_writeback()
                     block[set][way].dirty = 1; 
                     for( int i =0; i<8; i++)
                     {
-                        if(WQ.entry[index].mem_data_valid)
+                        if(WQ.entry[index].mem_data_valid[i])
                         {
                             block[set][way].mem_data[i] = WQ.entry[index].mem_data[i];
                             block[set][way].mem_data_valid[i]=1;
@@ -684,6 +684,14 @@ void CACHE::handle_read()
 				MSHR.entry[mshr_index].sq_index_depend_on_me.join (RQ.entry[index].sq_index_depend_on_me, SQ_SIZE);
                             }
 
+                            /*for(int i=0;i<8;i++)
+                            {
+                                if(RQ.entry[index].mem_data_valid[i])
+                                {
+                                    MSHR.entry[mshr_index].mem_data_valid[i]=1;
+                                    MSHR.entry[mshr_index].mem_data[i]=RQ.entry[index].mem_data[i];
+                                }
+                            }*/
                             if (RQ.entry[index].load_merged) {
                                 //uint32_t lq_index = RQ.entry[index].lq_index; 
                                 MSHR.entry[mshr_index].load_merged = 1;
@@ -718,8 +726,11 @@ void CACHE::handle_read()
 
                                 for(int i=0;i<8;i++)
                                 {
+                                    if(RQ.entry[index].mem_data_valid[i])
+                                    {
                                     MSHR.entry[mshr_index].mem_data[i]=RQ.entry[index].mem_data[i];
                                     MSHR.entry[mshr_index].mem_data_valid[i]=RQ.entry[index].mem_data_valid[i];
+                                    }
                                 }
 
                                 DP (if (warmup_complete[read_cpu]) {
@@ -1065,8 +1076,11 @@ void CACHE::fill_cache(uint32_t set, uint32_t way, PACKET *packet)
 
     for(int i =0;i<8;i++)
     {
+        if(packet->mem_data_valid[i])
+        {
         block[set][way].mem_data[i]=packet->mem_data[i];
         block[set][way].mem_data_valid[i]=packet->mem_data_valid[i];
+        }
     }
 
     DP ( if (warmup_complete[packet->cpu]) {
@@ -1203,11 +1217,27 @@ int CACHE::add_rq(PACKET *packet)
                 uint32_t sq_index = packet->sq_index;
                 RQ.entry[index].sq_index_depend_on_me.insert (sq_index);
                 RQ.entry[index].store_merged = 1;
+                /*for(int i=0;i<8;i++)
+                {
+                    if(packet->mem_data_valid[i])
+                    {
+                        RQ.entry[index].mem_data[i]=packet->mem_data[i];
+                        RQ.entry[index].mem_data_valid[i]=1;
+                    }
+                }*/
             }
             else {
                 uint32_t lq_index = packet->lq_index; 
                 RQ.entry[index].lq_index_depend_on_me.insert (lq_index);
                 RQ.entry[index].load_merged = 1;
+                /*for(int i=0;i<8;i++)
+                {
+                    if(packet->mem_data_valid[i])
+                    {
+                        RQ.entry[index].mem_data_valid[i]=1;
+                        RQ.entry[index].mem_data[i]=packet->mem_data[i];
+                    }
+                }*/
 
                 DP (if (warmup_complete[packet->cpu]) {
                 cout << "[DATA_MERGED] " << __func__ << " cpu: " << packet->cpu << " instr_id: " << RQ.entry[index].instr_id;
@@ -1278,6 +1308,14 @@ int CACHE::add_wq(PACKET *packet)
         WQ.MERGED++;
         WQ.ACCESS++;
 
+        /*for(int i=0;i<8;i++)
+        {
+            if(packet->mem_data_valid[i])
+            {
+                WQ.entry[index].mem_data[i]=packet->mem_data[i];
+                WQ.entry[index].mem_data_valid[i]=1;
+            }
+        }*/
         return index; // merged index
     }
 
@@ -1431,6 +1469,14 @@ int CACHE::add_pq(PACKET *packet)
 	    PQ.entry[index].is_data = 1;
 	  }
 
+      for(int i=0;i<8;i++)
+      {
+        if(packet->mem_data_valid[i])
+        {
+            PQ.entry[index].mem_data[i]=packet->mem_data[i];
+            PQ.entry[index].mem_data_valid[i]=1;        
+        }
+      }
         PQ.MERGED++;
         PQ.ACCESS++;
 

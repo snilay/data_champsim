@@ -1242,8 +1242,10 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
 
     for(int i=0;i<8;i++)
     {
-        LQ.entry[lq_index].mem_data[i]=ROB.entry[rob_index].d_value[data_index][i];
-        LQ.entry[lq_index].mem_data_valid[i]=ROB.entry[rob_index].d_valid[data_index][i];
+         
+        LQ.entry[lq_index].mem_data[i]=ROB.entry[rob_index].s_value[data_index][i];
+        LQ.entry[lq_index].mem_data_valid[i]=ROB.entry[rob_index].s_valid[data_index][i];
+        
     }
     // check RAW dependency
     int prior = rob_index - 1;
@@ -1430,8 +1432,8 @@ void O3_CPU::add_store_queue(uint32_t rob_index, uint32_t data_index)
 
     for(int i=0;i<8;i++)
     {
-        SQ.entry[sq_index].mem_data[i]=ROB.entry[rob_index].s_value[data_index][i];
-        SQ.entry[sq_index].mem_data_valid[i]=ROB.entry[rob_index].s_valid[data_index][i];
+        SQ.entry[sq_index].mem_data[i]=ROB.entry[rob_index].d_value[data_index][i];
+        SQ.entry[sq_index].mem_data_valid[i]=ROB.entry[rob_index].d_valid[data_index][i];
     }
 
     SQ.occupancy++;
@@ -2039,6 +2041,7 @@ void O3_CPU::complete_data_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb)
     }
     else { // L1D
 
+
         if (queue->entry[index].type == RFO)
             handle_merged_load(&queue->entry[index]);
         else { 
@@ -2265,11 +2268,11 @@ void O3_CPU::retire_rob()
             return;
         }
 
-        for(uint32_t i =0;i<NUM_INSTR_DESTINATIONS_SPARC;i++)
+        for(uint32_t i =0;i<NUM_INSTR_DESTINATIONS;i++)
         {
             if(ROB.entry[ROB.head].destination_memory[i])
             {
-            uint32_t temp_pa = va_to_pa(ROB.cpu,ROB.entry[ROB.head].instr_id, ROB.entry[ROB.head].destination_memory[i], ROB.entry[ROB.head].destination_memory[i]>>LOG2_BLOCK_SIZE, 0);
+            uint64_t temp_pa = va_to_pa(ROB.cpu,ROB.entry[ROB.head].instr_id, ROB.entry[ROB.head].destination_memory[i], ROB.entry[ROB.head].destination_memory[i]>>LOG2_PAGE_SIZE, 0);
             temp_pa >>= LOG2_PAGE_SIZE;
             temp_pa <<= LOG2_PAGE_SIZE;
             temp_pa |= (ROB.entry[ROB.head].destination_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1)); 
@@ -2291,11 +2294,11 @@ void O3_CPU::retire_rob()
         {
             if(ROB.entry[ROB.head].source_memory[i])
             {
-            uint32_t temp_pa = va_to_pa(ROB.cpu,ROB.entry[ROB.head].instr_id, ROB.entry[ROB.head].source_memory[i], ROB.entry[ROB.head].source_memory[i]>>LOG2_BLOCK_SIZE, 0);
+            uint64_t temp_pa = va_to_pa(ROB.cpu,ROB.entry[ROB.head].instr_id, ROB.entry[ROB.head].source_memory[i], ROB.entry[ROB.head].source_memory[i]>>LOG2_PAGE_SIZE, 0);
             temp_pa >>= LOG2_PAGE_SIZE;
             temp_pa <<= LOG2_PAGE_SIZE;
             temp_pa |= (ROB.entry[ROB.head].source_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
-            
+
             //uint32_t temp_pa=(ROB.entry[ROB.head].data_pa << LOG2_PAGE_SIZE) | ( ROB.entry[ROB.head].source_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
 
             map <uint64_t, uint64_t>::iterator mm_check = memory_map.find(temp_pa);

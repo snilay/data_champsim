@@ -13,6 +13,9 @@ uint8_t warmup_complete[NUM_CPUS],
         knob_cloudsuite = 0,
         knob_low_bandwidth = 0;
 
+uint64_t match=0,
+        not_match=0;
+
 uint64_t warmup_instructions     = 1000000,
          simulation_instructions = 10000000,
          champsim_seed;
@@ -880,6 +883,7 @@ int main(int argc, char** argv)
                     break;
                     //cout<<hex<<check_addr<<endl;
                     */
+                    //cout<<counter<<endl;
                     uint32_t way;
                     uint32_t set = ooo_cpu[i].L1D.get_set(check_addr>>LOG2_BLOCK_SIZE);
                     for(way=0;way<L1D_WAY;way++)
@@ -893,30 +897,55 @@ int main(int argc, char** argv)
                     //cout<<way<<endl;
                     if(way!=L1D_WAY)
                     {   
-                        cout<<"in L1"<<endl;
-                        if(ooo_cpu[i].L1D.block[set][way].mem_data[((check_addr%64)/8)] == mm->second)
-                            cout<<"Match"<<endl;    
+                        //cout<<"in L1"<<endl;
+                        //cout<<ooo_cpu[i].L1D.block[set][way].mem_data[((check_addr%64)/8)]<<" "<<mm->second<<endl;
+                        if(ooo_cpu[i].L1D.block[set][way].mem_data[((check_addr%64)/8)] != mm->second)
+                        {
+                            //cout<<check_addr<<endl;
+                            //cout<<ooo_cpu[i].L1D.block[set][way].mem_data[((check_addr%64)/8)]<<" "<<mm->second<<endl;
+                            not_match++;
+                            //cout<<"L1 Not Match"<<endl;    
+                        }
+                        else
+                            match++;
                     }
                     else
                     {
-                        /*set = ooo_cpu[i].L2C.get_set(check_addr >> LOG2_BLOCK_SIZE);
-                        way = ooo_cpu[i].L2C.get_way(check_addr >> LOG2_BLOCK_SIZE , set);
+                        set = ooo_cpu[i].L2C.get_set(check_addr >> LOG2_BLOCK_SIZE);
+                        for(way=0;way<L2C_WAY;way++)
+                        {
+                        //cout<<hex<<ooo_cpu[i].L1D.block[set][way].tag<<" "<<(check_addr)<<endl;
+                            if((ooo_cpu[i].L2C.block[set][way].full_addr == check_addr))   
+                                break;
+                        //map <uint64_t, uint64_t>::iterator mm_check = memory_map.find(ooo_cpu[i].L1D.block[j][k].tag)
+                        }
                         if(way!=L2C_WAY)
                         {
-                            if(ooo_cpu[i].L2C.block[set][way].mem_data[((check_addr%64)/8)] == mm->second)
-                            cout<<"Match"<<endl;
+                            if(ooo_cpu[i].L2C.block[set][way].mem_data[((check_addr%64)/8)] != mm->second)
+                            {
+                                //not_match++;
+                                //cout<<"L2 Not Match"<<endl;
+                            }
+                            //else
+                                //match++;
                         }
                         else
                         {
                             set = uncore.LLC.get_set(check_addr >> LOG2_BLOCK_SIZE);
-                            way = uncore.LLC.get_way(check_addr >> LOG2_BLOCK_SIZE , set);
+                            for(way=0;way<LLC_WAY;way++)
+                            {
+                                //cout<<hex<<ooo_cpu[i].L1D.block[set][way].tag<<" "<<(check_addr)<<endl;
+                                if((uncore.LLC.block[set][way].full_addr == check_addr))   
+                                    break;
+                                //map <uint64_t, uint64_t>::iterator mm_check = memory_map.find(ooo_cpu[i].L1D.block[j][k].tag)
+                            }                            
                             if(way!=LLC_WAY)
                             {
-                                if(uncore.LLC.block[set][way].mem_data[((check_addr%64)/8)] == mm->second)
-                                cout<<"Match"<<endl;
+                                if(uncore.LLC.block[set][way].mem_data[((check_addr%64)/8)] != mm->second)
+                                    cout<<"LLC Not Match"<<endl;
                             }
                         
-                        }*/
+                        }
                     }
                 
                 }
@@ -976,6 +1005,7 @@ int main(int argc, char** argv)
     }
 
     uncore.LLC.llc_prefetcher_final_stats();
+    cout<<"match:"<<match<<" Not match:"<<not_match<<endl;
 
 #ifndef CRC2_COMPILE
     uncore.LLC.llc_replacement_final_stats();
