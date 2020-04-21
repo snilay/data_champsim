@@ -161,8 +161,7 @@ class ooo_model_instr {
     uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC]; // output registers
 
     uint8_t source_registers[NUM_INSTR_SOURCES]; // input registers
-
-    uint8_t mem_data[8]; 
+ 
 
     // these are instruction ids of other instructions in the window
     //int64_t registers_instrs_i_depend_on[NUM_INSTR_SOURCES];
@@ -267,8 +266,7 @@ class ooo_model_instr {
             }
         }
 
-        for(int i=0; i<8; i++)
-            mem_data[i]=0;
+        
 
 #if 0
         for (uint32_t i=0; i<ROB_SIZE; i++) {

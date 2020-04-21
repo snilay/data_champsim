@@ -252,6 +252,8 @@ void O3_CPU::read_from_trace()
                     arch_instr.source_registers[i] = current_instr.source_registers[i];
                     arch_instr.source_memory[i] = current_instr.source_memory[i];
                     arch_instr.source_virtual_address[i] = current_instr.source_memory[i];
+                    //if(current_instr.source_memory[i] == 140518678686956)
+                        //cout<<+current_instr.s_value[i][(current_instr.source_memory[i]%64)/8]<<" ";
                     arch_instr.s_value[i][(current_instr.source_memory[i]%64)/8]=current_instr.s_value[i][(current_instr.source_memory[i]%64)/8];
                     arch_instr.s_valid[i][(current_instr.source_memory[i]%64)/8]=current_instr.s_valid[i][(current_instr.source_memory[i]%64)/8];
                     
@@ -1242,7 +1244,8 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
 
     for(int i=0;i<8;i++)
     {
-         
+        //if(ROB.entry[rob_index].source_memory[data_index] == 140518678686956)
+            //cout<<+ROB.entry[rob_index].s_value[data_index][i]<<" ";
         LQ.entry[lq_index].mem_data[i]=ROB.entry[rob_index].s_value[data_index][i];
         LQ.entry[lq_index].mem_data_valid[i]=ROB.entry[rob_index].s_valid[data_index][i];
         
@@ -1329,6 +1332,15 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
             LQ.entry[lq_index].physical_address = (SQ.entry[forwarding_index].physical_address & ~(uint64_t) ((1 << LOG2_BLOCK_SIZE) - 1)) | (LQ.entry[lq_index].virtual_address & ((1 << LOG2_BLOCK_SIZE) - 1));
             LQ.entry[lq_index].translated = COMPLETED;
             LQ.entry[lq_index].fetched = COMPLETED;
+
+            for(int i =0;i<8;i++)
+            {
+                if(SQ.entry[lq_index].mem_data_valid[i])
+                {    
+                    LQ.entry[forwarding_index].mem_data_valid[i]=1;
+                    LQ.entry[forwarding_index].mem_data[i]=SQ.entry[lq_index].mem_data[i];
+                }
+            }
 
             uint32_t fwr_rob_index = LQ.entry[lq_index].rob_index;
             ROB.entry[fwr_rob_index].num_mem_ops--;
@@ -1738,11 +1750,15 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
 
     for(int i=0;i<8;i++)
     {
+        //if(data_packet.full_addr == 44977833733356 )
+            //cout<<+LQ.entry[lq_index].mem_data[i]<<" ";
         data_packet.mem_data[i]=LQ.entry[lq_index].mem_data[i];
         data_packet.mem_data_valid[i]=LQ.entry[lq_index].mem_data_valid[i];
     }
 
     int rq_index = L1D.add_rq(&data_packet);
+    //if(data_packet.full_addr == 44977833733356 )
+
 
     if (rq_index == -2)
         return rq_index;
@@ -2215,6 +2231,8 @@ void O3_CPU::handle_merged_translation(PACKET *provider)
 
 void O3_CPU::handle_merged_load(PACKET *provider)
 {
+
+    
     ITERATE_SET(merged, provider->lq_index_depend_on_me, LQ.SIZE) {
         uint32_t merged_rob_index = LQ.entry[merged].rob_index;
 
@@ -2268,7 +2286,7 @@ void O3_CPU::retire_rob()
             return;
         }
 
-        for(uint32_t i =0;i<NUM_INSTR_DESTINATIONS;i++)
+        for(uint32_t i =0;i<MAX_INSTR_DESTINATIONS;i++)
         {
             if(ROB.entry[ROB.head].destination_memory[i])
             {
@@ -2278,10 +2296,12 @@ void O3_CPU::retire_rob()
             temp_pa |= (ROB.entry[ROB.head].destination_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1)); 
             
             //uint32_t temp_pa= (ROB.entry[ROB.head].data_pa << LOG2_PAGE_SIZE) | ( ROB.entry[ROB.head].destination_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
-            map <uint64_t, uint64_t>::iterator mm_check = memory_map.find(temp_pa);
+            if(temp_pa==44977833733356)
+                cout<<+ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)/8];
+            map <uint64_t, uint8_t>::iterator mm_check = memory_map.find(temp_pa);
             if(mm_check == memory_map.end())
             {
-                memory_map.insert(pair<uint64_t,uint64_t>(temp_pa,ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)/8]));           
+                memory_map.insert(pair<uint64_t,uint8_t>(temp_pa,ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)/8]));           
             }        
             else
             {
@@ -2300,11 +2320,15 @@ void O3_CPU::retire_rob()
             temp_pa |= (ROB.entry[ROB.head].source_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
 
             //uint32_t temp_pa=(ROB.entry[ROB.head].data_pa << LOG2_PAGE_SIZE) | ( ROB.entry[ROB.head].source_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
-
-            map <uint64_t, uint64_t>::iterator mm_check = memory_map.find(temp_pa);
+            if(temp_pa == 44977833733356)
+            {
+                //cout<<ROB.entry[ROB.head].source_memory[i]<<" ";
+                //cout<<+ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)/8];
+            }
+            map <uint64_t, uint8_t>::iterator mm_check = memory_map.find(temp_pa);
             if(mm_check == memory_map.end())
             {
-                memory_map.insert(pair<uint64_t,uint64_t>(temp_pa,ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)/8]));           
+                memory_map.insert(pair<uint64_t,uint8_t>(temp_pa,ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)/8]));           
             }        
             else
             {

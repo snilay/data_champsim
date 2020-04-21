@@ -28,7 +28,7 @@ queue <uint64_t > page_queue;
 map <uint64_t, uint64_t> page_table, inverse_table, recent_page, unique_cl[NUM_CPUS];
 uint64_t previous_ppage, num_adjacent_page, num_cl[NUM_CPUS], allocated_pages, num_page[NUM_CPUS], minor_fault[NUM_CPUS], major_fault[NUM_CPUS];
 
-map<uint64_t, uint64_t> memory_map;
+map<uint64_t, uint8_t> memory_map;
 void record_roi_stats(uint32_t cpu, CACHE *cache)
 {
     for (uint32_t i=0; i<NUM_TYPES; i++) {
@@ -866,7 +866,7 @@ int main(int argc, char** argv)
                 record_roi_stats(i, &ooo_cpu[i].L2C);
                 record_roi_stats(i, &uncore.LLC);
 
-                map<uint64_t,uint64_t>::iterator mm = memory_map.begin();
+                map<uint64_t,uint8_t>::iterator mm = memory_map.begin();
 
                 for (mm = memory_map.begin(); mm != memory_map.end(); mm++) {   
                     
@@ -901,8 +901,8 @@ int main(int argc, char** argv)
                         //cout<<ooo_cpu[i].L1D.block[set][way].mem_data[((check_addr%64)/8)]<<" "<<mm->second<<endl;
                         if(ooo_cpu[i].L1D.block[set][way].mem_data[((check_addr%64)/8)] != mm->second)
                         {
-                            //cout<<check_addr<<endl;
-                            //cout<<ooo_cpu[i].L1D.block[set][way].mem_data[((check_addr%64)/8)]<<" "<<mm->second<<endl;
+                            cout<<check_addr<<endl;
+                            cout<<+ooo_cpu[i].L1D.block[set][way].mem_data[((check_addr%64)/8)]<<" "<<+mm->second<<endl;
                             not_match++;
                             //cout<<"L1 Not Match"<<endl;    
                         }
