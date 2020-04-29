@@ -7,7 +7,7 @@
 #define LQ_SIZE 128
 #define SQ_SIZE 72
 #define NUM_INSTR_DESTINATIONS_SPARC 4
-#define NUM_INSTR_DESTINATIONS 2
+#define NUM_INSTR_DESTINATIONS 4
 #define NUM_INSTR_SOURCES 4
 
 // special registers that help us identify branches
@@ -43,11 +43,11 @@ class input_instr {
     uint64_t destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
     uint64_t source_memory[NUM_INSTR_SOURCES]; // input memory
 
-    unsigned int d_valid[NUM_INSTR_DESTINATIONS][8];
-    unsigned long long int d_value[NUM_INSTR_DESTINATIONS][8];
+    unsigned int d_valid[NUM_INSTR_DESTINATIONS][64];
+    unsigned long long int d_value[NUM_INSTR_DESTINATIONS][64];
 
-    unsigned int s_valid[NUM_INSTR_SOURCES][8];
-    unsigned long long int s_value[NUM_INSTR_SOURCES][8];
+    unsigned int s_valid[NUM_INSTR_SOURCES][64];
+    unsigned long long int s_value[NUM_INSTR_SOURCES][64];
 
     input_instr() {
         ip = 0;
@@ -57,7 +57,7 @@ class input_instr {
         for (uint32_t i=0; i<NUM_INSTR_SOURCES; i++) {
             source_registers[i] = 0;
             source_memory[i] = 0;
-            for (int j=0; j<8;j++)
+            for (int j=0; j<64;j++)
             {
                 s_value[i][j]=0;
                 s_valid[i][j]=0;
@@ -68,7 +68,7 @@ class input_instr {
         for (uint32_t i=0; i<NUM_INSTR_DESTINATIONS; i++) {
             destination_registers[i] = 0;
             destination_memory[i] = 0;
-            for (int j=0; j<8;j++)
+            for (int j=0; j<64;j++)
             {
                 d_value[i][j]=0;
                 d_valid[i][j]=0;
@@ -93,7 +93,6 @@ class cloudsuite_instr {
     uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC]; // output memory
     uint64_t source_memory[NUM_INSTR_SOURCES]; // input memory
 
-    uint8_t mem_data[8];
 
     uint8_t asid[2];
 
@@ -112,8 +111,6 @@ class cloudsuite_instr {
             destination_memory[i] = 0;
         }
 
-        for(int i=0;i<8;i++)
-            mem_data[i]=0;
 
         asid[0] = UINT8_MAX;
         asid[1] = UINT8_MAX;
@@ -174,12 +171,12 @@ class ooo_model_instr {
     // memory addresses that may cause dependencies between instructions
     uint64_t instruction_pa, data_pa, virtual_address, physical_address;
     uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC]; // output memory
-    uint8_t d_value[NUM_INSTR_DESTINATIONS_SPARC][8];
-    uint8_t d_valid[NUM_INSTR_DESTINATIONS_SPARC][8];
+    uint8_t d_value[NUM_INSTR_DESTINATIONS_SPARC][64];
+    uint8_t d_valid[NUM_INSTR_DESTINATIONS_SPARC][64];
     
     uint64_t source_memory[NUM_INSTR_SOURCES]; // input memory
-    uint8_t s_value[NUM_INSTR_SOURCES][8];
-    uint8_t s_valid[NUM_INSTR_SOURCES][8];
+    uint8_t s_value[NUM_INSTR_SOURCES][64];
+    uint8_t s_valid[NUM_INSTR_SOURCES][64];
     //int source_memory_outstanding[NUM_INSTR_SOURCES];  // a value of 2 here means the load hasn't been issued yet, 1 means it has been issued, but not returned yet, and 0 means it has returned
 
     // keep around a record of what the original virtual addresses were
@@ -245,7 +242,7 @@ class ooo_model_instr {
             source_added[i] = 0;
             lq_index[i] = UINT32_MAX;
             reg_RAW_checked[i] = 0;
-            for (int j=0; j<8;j++)
+            for (int j=0; j<64;j++)
             {
                 s_value[i][j]=0;
                 s_valid[i][j]=0;
@@ -259,7 +256,7 @@ class ooo_model_instr {
             destination_added[i] = 0;
             sq_index[i] = UINT32_MAX;
             forwarding_index[i] = 0;
-            for (int j=0; j<8;j++)
+            for (int j=0; j<64;j++)
             {
                 d_value[i][j]=0;
                 d_valid[i][j]=0;

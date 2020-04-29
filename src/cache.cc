@@ -97,7 +97,7 @@ void CACHE::handle_fill()
                     writeback_packet.ip = 0; // writeback does not have ip
                     writeback_packet.type = WRITEBACK;
                     writeback_packet.event_cycle = current_core_cycle[fill_cpu];
-                    for (int i =0; i <8;i++)
+                    for (int i =0; i <64;i++)
                     {
                         if(block[set][way].mem_data_valid[i] == 1)
                         {
@@ -155,14 +155,6 @@ void CACHE::handle_fill()
             if (cache_type == IS_L1D) {
                 if (MSHR.entry[mshr_index].type == RFO)
                 {
-                    for(int i=0; i<8; i++)
-                    {
-                        if(MSHR.entry[mshr_index].mem_data_valid[i] == 1)
-                        {
-                            block[set][way].mem_data[i] = MSHR.entry[mshr_index].mem_data[i];
-                            block[set][way].mem_data_valid[i] = 1;
-                        }
-                    }
                     block[set][way].dirty = 1;
                 }
             }
@@ -248,7 +240,7 @@ void CACHE::handle_writeback()
             // mark dirty
 
             block[set][way].dirty = 1;
-            for(int i =0; i<8; i++)
+            for(int i =0; i<64; i++)
             {
                 if(WQ.entry[index].mem_data_valid[i] == 1)
                 {
@@ -340,7 +332,7 @@ void CACHE::handle_writeback()
                         if (WQ.entry[index].fill_level < MSHR.entry[mshr_index].fill_level)
                         {
 
-                            for(int i =0;i<8; i++)
+                            for(int i =0;i<64; i++)
                             {
                                 if(WQ.entry[index].mem_data_valid[i]==1)
                                 {
@@ -437,7 +429,7 @@ void CACHE::handle_writeback()
                             writeback_packet.type = WRITEBACK;
                             writeback_packet.event_cycle = current_core_cycle[writeback_cpu];
                             
-                            for(int i =0; i<8;i++)
+                            for(int i =0; i<64;i++)
                             {
                                 if(block[set][way].mem_data_valid[i]==1)
                                 {
@@ -489,7 +481,7 @@ void CACHE::handle_writeback()
                     
                     // mark dirty
                     block[set][way].dirty = 1; 
-                    for( int i =0; i<8; i++)
+                    for( int i =0; i<64; i++)
                     {
                         if(WQ.entry[index].mem_data_valid[i]==1)
                         {
@@ -540,7 +532,7 @@ void CACHE::handle_read()
             if (way >= 0) { // read hit
                 
 
-                for(int i=0; i<8;i++)
+                for(int i=0; i<64;i++)
                 {   
                     if(RQ.entry[index].mem_data_valid[i]==1)
                     {
@@ -701,9 +693,9 @@ void CACHE::handle_read()
                 MSHR.entry[mshr_index].sq_index_depend_on_me.join (RQ.entry[index].sq_index_depend_on_me, SQ_SIZE);
                             }
 
-                            for(int i=0;i<8;i++)
+                            for(int i=0;i<64;i++)
                             {
-                                if(RQ.entry[index].mem_data_valid[i])
+                                if(RQ.entry[index].mem_data_valid[i]==1)
                                 {
                                     MSHR.entry[mshr_index].mem_data_valid[i]=1;
                                     MSHR.entry[mshr_index].mem_data[i]=RQ.entry[index].mem_data[i];
@@ -744,7 +736,7 @@ void CACHE::handle_read()
                                 MSHR.entry[mshr_index].load_merged = 1;
                                 MSHR.entry[mshr_index].lq_index_depend_on_me.insert (lq_index);
 
-                                for(int i=0;i<8;i++)
+                                for(int i=0;i<64;i++)
                                 {
                                     if(RQ.entry[index].mem_data_valid[i] == 1)
                                     {
@@ -1096,11 +1088,11 @@ void CACHE::fill_cache(uint32_t set, uint32_t way, PACKET *packet)
 
 
 
-    for(int i =0;i<8;i++)
+    for(int i =0;i<64;i++)
     {
         if(packet->mem_data_valid[i]==1)
         {
-        //if(block[set][way].full_addr == 44977833733356)
+        //if(block[set][way].full_addr == 44977833402448)
             //cout<<i<<" "<<+packet->mem_data[i]<<" ";
         block[set][way].mem_data[i]=packet->mem_data[i];
         block[set][way].mem_data_valid[i]=packet->mem_data_valid[i];
@@ -1245,7 +1237,7 @@ int CACHE::add_rq(PACKET *packet)
                 uint32_t sq_index = packet->sq_index;
                 RQ.entry[index].sq_index_depend_on_me.insert (sq_index);
                 RQ.entry[index].store_merged = 1;
-                for(int i=0;i<8;i++)
+                for(int i=0;i<64;i++)
                 {
 
                     if(packet->mem_data_valid[i] == 1)
@@ -1261,7 +1253,7 @@ int CACHE::add_rq(PACKET *packet)
                 uint32_t lq_index = packet->lq_index; 
                 RQ.entry[index].lq_index_depend_on_me.insert (lq_index);
                 RQ.entry[index].load_merged = 1;
-                for(int i=0;i<8;i++)
+                for(int i=0;i<64;i++)
                 {
                     if(packet->mem_data_valid[i] == 1)
                     {
@@ -1343,7 +1335,7 @@ int CACHE::add_wq(PACKET *packet)
         WQ.MERGED++;
         WQ.ACCESS++;
 
-        for(int i=0;i<8;i++)
+        for(int i=0;i<64;i++)
         {
             if(packet->mem_data_valid[i])
             {
@@ -1507,7 +1499,7 @@ int CACHE::add_pq(PACKET *packet)
         PQ.entry[index].is_data = 1;
       }
 
-      for(int i=0;i<8;i++)
+      for(int i=0;i<64;i++)
       {
         if(packet->mem_data_valid[i] == 1)
         {
@@ -1689,7 +1681,7 @@ void CACHE::add_mshr(PACKET *packet)
     packet->cycle_enqueued = current_core_cycle[packet->cpu];
 
     //if(packet->full_addr == 44977833733356 && cache_type == IS_L1D)
-      //  cout<<+packet->mem_data[5]<<" ";
+      //  cout<<+packet->mem_data_valid[5]<<" ";
 
     // search mshr
     for (index=0; index<MSHR_SIZE; index++) {

@@ -11,7 +11,7 @@
 #include <string.h>
 #include <string>
 
-#define NUM_INSTR_DESTINATIONS 2
+#define NUM_INSTR_DESTINATIONS 4
 #define NUM_INSTR_SOURCES 4
 
 //FILE *fptr1,*fptr2;
@@ -28,11 +28,11 @@ typedef struct trace_instr_format {
     unsigned long long int destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
     unsigned long long int source_memory[NUM_INSTR_SOURCES];           // input memory
 
-    unsigned int d_valid[NUM_INSTR_DESTINATIONS][8];
-    unsigned long long int d_value[NUM_INSTR_DESTINATIONS][8];
+    unsigned int d_valid[NUM_INSTR_DESTINATIONS][64];
+    unsigned long long int d_value[NUM_INSTR_DESTINATIONS][64];
 
-    unsigned int s_valid[NUM_INSTR_SOURCES][8];
-    unsigned long long int s_value[NUM_INSTR_SOURCES][8];
+    unsigned int s_valid[NUM_INSTR_SOURCES][64];
+    unsigned long long int s_value[NUM_INSTR_SOURCES][64];
 
 } trace_instr_format_t;
 
@@ -110,7 +110,7 @@ void BeginInstruction(VOID *ip, UINT32 op_code, VOID *opstring)
     {
         curr_instr.destination_registers[i] = 0;
         curr_instr.destination_memory[i] = 0;
-        for (int j=0; j<8;j++)
+        for (int j=0; j<64;j++)
         {
             curr_instr.d_value[i][j]=0;
             curr_instr.d_valid[i][j]=0;
@@ -121,7 +121,7 @@ void BeginInstruction(VOID *ip, UINT32 op_code, VOID *opstring)
     {
         curr_instr.source_registers[i] = 0;
         curr_instr.source_memory[i] = 0;
-        for (int j=0; j<8;j++)
+        for (int j=0; j<64;j++)
         {
             curr_instr.s_value[i][j]=0;
             curr_instr.s_valid[i][j]=0;
@@ -288,8 +288,8 @@ void MemoryRead(VOID* addr, UINT32 index, UINT32 read_size)
             {
                 curr_instr.source_memory[i] = (unsigned long long int)addr;
                 PIN_SafeCopy(&value, addr, sizeof(int));
-                curr_instr.s_value[i][(((unsigned long int)addr)%64)/8] = value;
-                curr_instr.s_valid[i][(((unsigned long int)addr)%64)/8]=1;
+                curr_instr.s_value[i][(((unsigned long int)addr)%64)] = value;
+                curr_instr.s_valid[i][(((unsigned long int)addr)%64)]=1;
                 //fprintf(stderr,"Read: ADDR, VAL: %lx, %lx\n", (unsigned long int)addr, value);
                 break;
             }
@@ -321,8 +321,8 @@ void MemoryWrite(VOID* addr, UINT32 index)
             {
                 curr_instr.destination_memory[i] = (unsigned long long int)addr;
                 PIN_SafeCopy(&value, addr, sizeof(int));
-                curr_instr.d_value[i][(((unsigned long int)addr)%64)/8] = value;
-                curr_instr.d_valid[i][(((unsigned long int)addr)%64)/8] = 1;
+                curr_instr.d_value[i][(((unsigned long int)addr)%64)] = value;
+                curr_instr.d_valid[i][(((unsigned long int)addr)%64)] = 1;
                 //fprintf(stderr,"Write: ADDR, VAL: %lx, %lx\n", (unsigned long int)addr, value);
                 break;
             }

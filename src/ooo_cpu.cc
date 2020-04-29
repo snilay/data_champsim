@@ -197,11 +197,12 @@ void O3_CPU::read_from_trace()
                 for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
                     arch_instr.destination_registers[i] = current_instr.destination_registers[i];
                     arch_instr.destination_memory[i] = current_instr.destination_memory[i];
-                    arch_instr.destination_virtual_address[i] = current_instr.destination_memory[i];
-                    arch_instr.d_value[i][(current_instr.destination_memory[i]%64)/8]=current_instr.d_value[i][(current_instr.destination_memory[i]%64)/8];
-
-                    arch_instr.d_valid[i][(current_instr.destination_memory[i]%64)/8]=current_instr.d_valid[i][(current_instr.destination_memory[i]%64)/8];
-                    
+                    arch_instr.destination_virtual_address[i] = current_instr.destination_memory[i];\
+                    for(int j=0;j<64;j++)
+                    {
+                        arch_instr.d_value[i][j]=current_instr.d_value[i][j];
+                        arch_instr.d_valid[i][j]=current_instr.d_valid[i][j];
+                    }
                     
 
 
@@ -254,9 +255,11 @@ void O3_CPU::read_from_trace()
                     arch_instr.source_virtual_address[i] = current_instr.source_memory[i];
                     //if(current_instr.source_memory[i] == 140518678686956)
                         //cout<<+current_instr.s_value[i][(current_instr.source_memory[i]%64)/8]<<" ";
-                    arch_instr.s_value[i][(current_instr.source_memory[i]%64)/8]=current_instr.s_value[i][(current_instr.source_memory[i]%64)/8];
-                    arch_instr.s_valid[i][(current_instr.source_memory[i]%64)/8]=current_instr.s_valid[i][(current_instr.source_memory[i]%64)/8];
-                    
+                    for(int j=0;j<64;j++)
+                    {
+                        arch_instr.s_value[i][j]=current_instr.s_value[i][j];
+                        arch_instr.s_valid[i][j]=current_instr.s_valid[i][j];
+                    }
                    
 		    switch(arch_instr.source_registers[i])
                       {
@@ -1242,7 +1245,7 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
     LQ.entry[lq_index].event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
     LQ.occupancy++;
 
-    for(int i=0;i<8;i++)
+    for(int i=0;i<64;i++)
     {
         //if(ROB.entry[rob_index].source_memory[data_index] == 140518678686956)
             //cout<<+ROB.entry[rob_index].s_value[data_index][i]<<" ";
@@ -1333,12 +1336,12 @@ void O3_CPU::add_load_queue(uint32_t rob_index, uint32_t data_index)
             LQ.entry[lq_index].translated = COMPLETED;
             LQ.entry[lq_index].fetched = COMPLETED;
 
-            for(int i =0;i<8;i++)
+            for(int i =0;i<64;i++)
             {
-                if(SQ.entry[lq_index].mem_data_valid[i])
+                if(LQ.entry[lq_index].mem_data_valid[i])
                 {    
-                    LQ.entry[forwarding_index].mem_data_valid[i]=1;
-                    LQ.entry[forwarding_index].mem_data[i]=SQ.entry[lq_index].mem_data[i];
+                    SQ.entry[forwarding_index].mem_data_valid[i]=1;
+                    SQ.entry[forwarding_index].mem_data[i]=LQ.entry[lq_index].mem_data[i];
                 }
             }
 
@@ -1442,7 +1445,7 @@ void O3_CPU::add_store_queue(uint32_t rob_index, uint32_t data_index)
     SQ.entry[sq_index].asid[1] = ROB.entry[rob_index].asid[1];
     SQ.entry[sq_index].event_cycle = current_core_cycle[cpu] + SCHEDULING_LATENCY;
 
-    for(int i=0;i<8;i++)
+    for(int i=0;i<64;i++)
     {
         SQ.entry[sq_index].mem_data[i]=ROB.entry[rob_index].d_value[data_index][i];
         SQ.entry[sq_index].mem_data_valid[i]=ROB.entry[rob_index].d_valid[data_index][i];
@@ -1503,7 +1506,7 @@ void O3_CPU::operate_lsq()
                 data_packet.asid[1] = SQ.entry[sq_index].asid[1];
                 data_packet.event_cycle = SQ.entry[sq_index].event_cycle;
 
-                for(int i=0;i<8;i++)
+                for(int i=0;i<64;i++)
                 {
                     data_packet.mem_data[i]=SQ.entry[sq_index].mem_data[i];
                     data_packet.mem_data_valid[i]=SQ.entry[sq_index].mem_data_valid[i];
@@ -1590,7 +1593,7 @@ void O3_CPU::operate_lsq()
                 data_packet.asid[0] = LQ.entry[lq_index].asid[0];
                 data_packet.asid[1] = LQ.entry[lq_index].asid[1];
                 data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
-                for(int i=0;i<8;i++)
+                for(int i=0;i<64;i++)
                 {
                     data_packet.mem_data[i]=LQ.entry[lq_index].mem_data[i];
                     data_packet.mem_data_valid[i]=LQ.entry[lq_index].mem_data_valid[i];
@@ -1700,6 +1703,14 @@ void O3_CPU::execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_
                         LQ.entry[lq_index].translated = COMPLETED;
                         LQ.entry[lq_index].fetched = COMPLETED;
                         LQ.entry[lq_index].event_cycle = current_core_cycle[cpu];
+                        // for(int i=0;i<64;i++)
+                        // {
+                        //     if(LQ.entry[lq_index].mem_data_valid[i]==1)
+                        //     {
+                        //         SQ.entry[sq_index].mem_data_valid[i]=1;
+                        //         SQ.entry[sq_index].mem_data[i]=LQ.entry[lq_index].mem_data[i];
+                        //     }
+                        // }
 
                         uint32_t fwr_rob_index = LQ.entry[lq_index].rob_index;
                         ROB.entry[fwr_rob_index].num_mem_ops--;
@@ -1748,7 +1759,7 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
     data_packet.asid[1] = LQ.entry[lq_index].asid[1];
     data_packet.event_cycle = LQ.entry[lq_index].event_cycle;
 
-    for(int i=0;i<8;i++)
+    for(int i=0;i<64;i++)
     {
         //if(data_packet.full_addr == 44977833733356 )
             //cout<<+LQ.entry[lq_index].mem_data[i]<<" ";
@@ -2296,16 +2307,16 @@ void O3_CPU::retire_rob()
             temp_pa |= (ROB.entry[ROB.head].destination_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1)); 
             
             //uint32_t temp_pa= (ROB.entry[ROB.head].data_pa << LOG2_PAGE_SIZE) | ( ROB.entry[ROB.head].destination_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
-            if(temp_pa==44977833733356)
-                cout<<+ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)/8];
+            //if(temp_pa==44977833471392)
+                //cout<<+ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)]<<" ";
             map <uint64_t, uint8_t>::iterator mm_check = memory_map.find(temp_pa);
             if(mm_check == memory_map.end())
             {
-                memory_map.insert(pair<uint64_t,uint8_t>(temp_pa,ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)/8]));           
+                memory_map.insert(pair<uint64_t,uint8_t>(temp_pa,ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)]));           
             }        
             else
             {
-                mm_check->second=ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)/8];            
+                mm_check->second=ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)];            
             }
             }        
             
@@ -2320,19 +2331,19 @@ void O3_CPU::retire_rob()
             temp_pa |= (ROB.entry[ROB.head].source_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
 
             //uint32_t temp_pa=(ROB.entry[ROB.head].data_pa << LOG2_PAGE_SIZE) | ( ROB.entry[ROB.head].source_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
-            if(temp_pa == 44977833733356)
+            /*if(temp_pa == 44977833471392)
             {
                 //cout<<ROB.entry[ROB.head].source_memory[i]<<" ";
-                //cout<<+ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)/8];
-            }
+                cout<<+ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)]<<" ";
+            }*/
             map <uint64_t, uint8_t>::iterator mm_check = memory_map.find(temp_pa);
             if(mm_check == memory_map.end())
             {
-                memory_map.insert(pair<uint64_t,uint8_t>(temp_pa,ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)/8]));           
+                memory_map.insert(pair<uint64_t,uint8_t>(temp_pa,ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)]));           
             }        
             else
             {
-                mm_check->second=ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)/8];            
+                mm_check->second=ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)];            
             }
             }        
             
@@ -2369,7 +2380,7 @@ void O3_CPU::retire_rob()
                         data_packet.asid[0] = SQ.entry[sq_index].asid[0];
                         data_packet.asid[1] = SQ.entry[sq_index].asid[1];
                         data_packet.event_cycle = current_core_cycle[cpu];
-                        for(int i=0;i<8;i++)
+                        for(int i=0;i<64;i++)
                         {
                             data_packet.mem_data[i]=SQ.entry[sq_index].mem_data[i];
                             data_packet.mem_data_valid[i]=SQ.entry[sq_index].mem_data_valid[i];
