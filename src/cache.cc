@@ -286,38 +286,38 @@ void CACHE::handle_writeback()
                 uint8_t miss_handled = 1;
                 int mshr_index = check_mshr(&WQ.entry[index]);
 
-        if(mshr_index == -2)
-          {
-            // this is a data/instruction collision in the MSHR, so we have to wait before we can allocate this miss
-            miss_handled = 0;
-          }
+                if(mshr_index == -2)
+                {
+                    // this is a data/instruction collision in the MSHR, so we have to wait before we can allocate this miss
+                    miss_handled = 0;
+                }
                 else if ((mshr_index == -1) && (MSHR.occupancy < MSHR_SIZE)) { // this is a new miss
 
-          if(cache_type == IS_LLC)
-            {
-              // check to make sure the DRAM RQ has room for this LLC RFO miss
-              if (lower_level->get_occupancy(1, WQ.entry[index].address) == lower_level->get_size(1, WQ.entry[index].address))
-            {
-              miss_handled = 0;
-            }
-              else
-            {
-              add_mshr(&WQ.entry[index]);
-              lower_level->add_rq(&WQ.entry[index]);
+                    if(cache_type == IS_LLC)
+                    {
+                        // check to make sure the DRAM RQ has room for this LLC RFO miss
+                        if (lower_level->get_occupancy(1, WQ.entry[index].address) == lower_level->get_size(1, WQ.entry[index].address))
+                        {
+                            miss_handled = 0;
+                        }
+                        else
+                        {
+                            add_mshr(&WQ.entry[index]);
+                            lower_level->add_rq(&WQ.entry[index]);
               
-            }
-            }
-          else
-            {
-              // add it to mshr (RFO miss)
-              add_mshr(&WQ.entry[index]);
+                        }
+                    }
+                    else
+                    {
+                        // add it to mshr (RFO miss)
+                        add_mshr(&WQ.entry[index]);
 
               
-              // add it to the next level's read queue
-              //if (lower_level) // L1D always has a lower level cache
-              lower_level->add_rq(&WQ.entry[index]);
+                     // add it to the next level's read queue
+                     //if (lower_level) // L1D always has a lower level cache
+                        lower_level->add_rq(&WQ.entry[index]);
 
-            }
+                    }
                 }
                 else {
                     if ((mshr_index == -1) && (MSHR.occupancy == MSHR_SIZE)) { // not enough MSHR resource
@@ -349,7 +349,7 @@ void CACHE::handle_writeback()
                         if (MSHR.entry[mshr_index].type == PREFETCH) {
                             uint8_t  prior_returned = MSHR.entry[mshr_index].returned;
                             uint64_t prior_event_cycle = MSHR.entry[mshr_index].event_cycle;
-                MSHR.entry[mshr_index] = WQ.entry[index];
+                            MSHR.entry[mshr_index] = WQ.entry[index];
 
                             // in case request is already returned, we should keep event_cycle and retunred variables
                             MSHR.entry[mshr_index].returned = prior_returned;
@@ -364,7 +364,7 @@ void CACHE::handle_writeback()
                         cout << " address: " << hex << WQ.entry[index].address;
                         cout << " full_addr: " << WQ.entry[index].full_addr << dec;
                         cout << " cycle: " << WQ.entry[index].event_cycle << endl; });
-                    }
+                        }
                     else { // WE SHOULD NOT REACH HERE
                         cerr << "[" << NAME << "] MSHR errors" << endl;
                         assert(0);
@@ -454,17 +454,17 @@ void CACHE::handle_writeback()
                 if (do_fill) {
                     // update prefetcher
                     if (cache_type == IS_L1D)
-              l1d_prefetcher_cache_fill(WQ.entry[index].full_addr, set, way, 0, block[set][way].address<<LOG2_BLOCK_SIZE, WQ.entry[index].pf_metadata);
+                        l1d_prefetcher_cache_fill(WQ.entry[index].full_addr, set, way, 0, block[set][way].address<<LOG2_BLOCK_SIZE, WQ.entry[index].pf_metadata);
                     else if (cache_type == IS_L2C)
-              WQ.entry[index].pf_metadata = l2c_prefetcher_cache_fill(WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0,
+                        WQ.entry[index].pf_metadata = l2c_prefetcher_cache_fill(WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0,
                                           block[set][way].address<<LOG2_BLOCK_SIZE, WQ.entry[index].pf_metadata);
                     if (cache_type == IS_LLC)
-              {
-            cpu = writeback_cpu;
-            WQ.entry[index].pf_metadata =llc_prefetcher_cache_fill(WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0,
+                    {
+                        cpu = writeback_cpu;
+                        WQ.entry[index].pf_metadata =llc_prefetcher_cache_fill(WQ.entry[index].address<<LOG2_BLOCK_SIZE, set, way, 0,
                                            block[set][way].address<<LOG2_BLOCK_SIZE, WQ.entry[index].pf_metadata);
-            cpu = 0;
-              }
+                        cpu = 0;
+                    }
 
                     // update replacement policy
                     if (cache_type == IS_LLC) {

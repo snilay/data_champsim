@@ -43,11 +43,11 @@ class input_instr {
     uint64_t destination_memory[NUM_INSTR_DESTINATIONS]; // output memory
     uint64_t source_memory[NUM_INSTR_SOURCES]; // input memory
 
-    unsigned int d_valid[NUM_INSTR_DESTINATIONS][64];
-    unsigned long long int d_value[NUM_INSTR_DESTINATIONS][64];
+    uint8_t d_valid[NUM_INSTR_DESTINATIONS][64];
+    uint8_t d_value[NUM_INSTR_DESTINATIONS][64];
 
-    unsigned int s_valid[NUM_INSTR_SOURCES][64];
-    unsigned long long int s_value[NUM_INSTR_SOURCES][64];
+    uint8_t s_valid[NUM_INSTR_SOURCES][64];
+    uint8_t s_value[NUM_INSTR_SOURCES][64];
 
     input_instr() {
         ip = 0;
