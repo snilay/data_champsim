@@ -105,7 +105,9 @@ void CACHE::handle_fill()
                             writeback_packet.mem_data_valid[i] = block[set][way].mem_data_valid[i];    
                         }
                         else
+                        {
                             writeback_packet.mem_data_valid[i] = 0;
+                        }
                     }
 
                     lower_level->add_wq(&writeback_packet);
@@ -148,9 +150,7 @@ void CACHE::handle_fill()
             sim_access[fill_cpu][MSHR.entry[mshr_index].type]++;
 
             fill_cache(set, way, &MSHR.entry[mshr_index]);
-            //if(cache_type == IS_L1D && MSHR.entry[mshr_index].full_addr == 44977833733356)
-                //cout<<+MSHR.entry[mshr_index].mem_data[5]<<" ";
-
+            
             // RFO marks cache line dirty
             if (cache_type == IS_L1D) {
                 if (MSHR.entry[mshr_index].type == RFO)
@@ -303,7 +303,9 @@ void CACHE::handle_writeback()
                         else
                         {
                             add_mshr(&WQ.entry[index]);
+                            
                             lower_level->add_rq(&WQ.entry[index]);
+
               
                         }
                     }
@@ -316,6 +318,7 @@ void CACHE::handle_writeback()
                      // add it to the next level's read queue
                      //if (lower_level) // L1D always has a lower level cache
                         lower_level->add_rq(&WQ.entry[index]);
+
 
                     }
                 }
@@ -338,8 +341,7 @@ void CACHE::handle_writeback()
                                 {
                                     MSHR.entry[mshr_index].mem_data[i]=WQ.entry[index].mem_data[i];
                                     MSHR.entry[mshr_index].mem_data_valid[i]=1;
-                                } 
-
+                                }
 
                             }
                             MSHR.entry[mshr_index].fill_level = WQ.entry[index].fill_level;
@@ -478,7 +480,7 @@ void CACHE::handle_writeback()
                     sim_access[writeback_cpu][WQ.entry[index].type]++;
 
                     fill_cache(set, way, &WQ.entry[index]);
-                    
+            
                     // mark dirty
                     block[set][way].dirty = 1; 
                     for( int i =0; i<64; i++)
@@ -536,8 +538,6 @@ void CACHE::handle_read()
                 {   
                     if(RQ.entry[index].mem_data_valid[i]==1)
                     {
-                        //if(RQ.entry[index].full_addr == 44977833733356 && cache_type == IS_L1D)
-                            //cout<<i<<" "<<+RQ.entry[index].mem_data[i]<<" ";
                         block[set][way].mem_data[i] = RQ.entry[index].mem_data[i];
                         block[set][way].mem_data_valid[i]=1;
                     }
@@ -655,8 +655,7 @@ void CACHE::handle_read()
             {
               // add it to mshr (read miss)
               add_mshr(&RQ.entry[index]);
-              //if(RQ.entry[index].full_addr == 44977833733356 && cache_type == IS_L1D)
-                  //cout<<+RQ.entry[index].mem_data[5]<<" ";
+
               // add it to the next level's read queue
               if (lower_level)
                         lower_level->add_rq(&RQ.entry[index]);      
@@ -1092,13 +1091,13 @@ void CACHE::fill_cache(uint32_t set, uint32_t way, PACKET *packet)
     {
         if(packet->mem_data_valid[i]==1)
         {
-        //if(block[set][way].full_addr == 44977833402448)
-            //cout<<i<<" "<<+packet->mem_data[i]<<" ";
         block[set][way].mem_data[i]=packet->mem_data[i];
         block[set][way].mem_data_valid[i]=packet->mem_data_valid[i];
         }
         else
+        {
             block[set][way].mem_data_valid[i]=0;
+        }
     }
 
     DP ( if (warmup_complete[packet->cpu]) {
@@ -1173,6 +1172,7 @@ int CACHE::add_rq(PACKET *packet)
 {
     // check for the latest wirtebacks in the write queue
     int wq_index = WQ.check_queue(packet);
+
     if (wq_index != -1) {
         
         
@@ -1242,11 +1242,10 @@ int CACHE::add_rq(PACKET *packet)
 
                     if(packet->mem_data_valid[i] == 1)
                     {
-                        //if(packet->full_addr == 44977833733356 && cache_type == IS_L1D)
-                            //cout<<packet->mem_data[i]<<" ";
                         RQ.entry[index].mem_data[i]=packet->mem_data[i];
                         RQ.entry[index].mem_data_valid[i]=1;
                     }
+
                 }
             }
             else {
@@ -1257,8 +1256,6 @@ int CACHE::add_rq(PACKET *packet)
                 {
                     if(packet->mem_data_valid[i] == 1)
                     {
-                        //if(packet->full_addr == 44977833733356 )
-                            //cout<<+packet->mem_data[i]<<" ";
                         RQ.entry[index].mem_data_valid[i]=1;
                         RQ.entry[index].mem_data[i]=packet->mem_data[i];
                     }
@@ -1297,8 +1294,6 @@ int CACHE::add_rq(PACKET *packet)
 #endif
 
     RQ.entry[index] = *packet;
-    //if(packet->full_addr == 44977833733356 && cache_type == IS_L1D)
-        //cout<<+packet->mem_data[5]<<" ";
 
     // ADD LATENCY
     if (RQ.entry[index].event_cycle < current_core_cycle[packet->cpu])
@@ -1679,9 +1674,6 @@ void CACHE::add_mshr(PACKET *packet)
     uint32_t index = 0;
 
     packet->cycle_enqueued = current_core_cycle[packet->cpu];
-
-    //if(packet->full_addr == 44977833733356 && cache_type == IS_L1D)
-      //  cout<<+packet->mem_data_valid[5]<<" ";
 
     // search mshr
     for (index=0; index<MSHR_SIZE; index++) {

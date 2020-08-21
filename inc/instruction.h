@@ -11,7 +11,7 @@
 #define NUM_INSTR_SOURCES 4
 
 // special registers that help us identify branches
-#define REG_STACK_POINTER 6
+#define REG_STACK_POINTER 30
 #define REG_FLAGS 25
 #define REG_INSTRUCTION_POINTER 26
 

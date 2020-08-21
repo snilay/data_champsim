@@ -28,7 +28,7 @@ queue <uint64_t > page_queue;
 map <uint64_t, uint64_t> page_table, inverse_table, recent_page, unique_cl[NUM_CPUS];
 uint64_t previous_ppage, num_adjacent_page, num_cl[NUM_CPUS], allocated_pages, num_page[NUM_CPUS], minor_fault[NUM_CPUS], major_fault[NUM_CPUS];
 
-map<uint64_t, uint8_t> memory_map;
+map<uint64_t, map<int,uint8_t>> memory_map;
 void record_roi_stats(uint32_t cpu, CACHE *cache)
 {
     for (uint32_t i=0; i<NUM_TYPES; i++) {
@@ -754,7 +754,6 @@ int main(int argc, char** argv)
     start_time = time(NULL);
     uint8_t run_simulation = 1;
     while (run_simulation) {
-
         uint64_t elapsed_second = (uint64_t)(time(NULL) - start_time),
                  elapsed_minute = elapsed_second / 60,
                  elapsed_hour = elapsed_minute / 60;
@@ -764,16 +763,17 @@ int main(int argc, char** argv)
         for (int i=0; i<NUM_CPUS; i++) {
             // proceed one cycle
             current_core_cycle[i]++;
-
+            
             //cout << "Trying to process instr_id: " << ooo_cpu[i].instr_unique_id << " fetch_stall: " << +ooo_cpu[i].fetch_stall;
             //cout << " stall_cycle: " << stall_cycle[i] << " current: " << current_core_cycle[i] << endl;
 
             // core might be stalled due to page fault or branch misprediction
             if (stall_cycle[i] <= current_core_cycle[i]) {
-
+            
 	      // retire
 	      if ((ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].executed == COMPLETED) && (ooo_cpu[i].ROB.entry[ooo_cpu[i].ROB.head].event_cycle <= current_core_cycle[i]))
-		ooo_cpu[i].retire_rob();
+		
+        ooo_cpu[i].retire_rob();
 
 	      // complete 
 	      ooo_cpu[i].update_rob();
@@ -792,7 +792,7 @@ int main(int argc, char** argv)
 	      ooo_cpu[i].execute_memory_instruction();
 
 	      ooo_cpu[i].update_rob();
-
+          
 	      // decode
 	      if(ooo_cpu[i].DECODE_BUFFER.occupancy > 0)
 		{
@@ -866,74 +866,79 @@ int main(int argc, char** argv)
                 record_roi_stats(i, &ooo_cpu[i].L2C);
                 record_roi_stats(i, &uncore.LLC);
 
-                map<uint64_t,uint8_t>::iterator mm = memory_map.begin();
-
+                map<uint64_t,map<int,uint8_t>>::iterator mm = memory_map.begin();
+                
                 for (mm = memory_map.begin(); mm != memory_map.end(); mm++) {   
                     
                     uint64_t check_addr = (mm->first);
                     
-                    //cout<<counter<<endl;
                     uint32_t way;
-                    uint32_t set = ooo_cpu[i].L1D.get_set(check_addr>>LOG2_BLOCK_SIZE);
+                    uint32_t set = ooo_cpu[i].L1D.get_set(check_addr);
                     for(way=0;way<L1D_WAY;way++)
                     {
-                        //cout<<hex<<ooo_cpu[i].L1D.block[set][way].tag<<" "<<(check_addr)<<endl;
-                        if((ooo_cpu[i].L1D.block[set][way].full_addr == check_addr))   
+                        if((ooo_cpu[i].L1D.block[set][way].address == check_addr))   
                             break;
-                        //map <uint64_t, uint64_t>::iterator mm_check = memory_map.find(ooo_cpu[i].L1D.block[j][k].tag)
                     }
-                    //cout<<set<<endl;
-                    //cout<<way<<endl;
                     if(way!=L1D_WAY)
                     {   
-                        //cout<<"in L1"<<endl;
-                        //cout<<ooo_cpu[i].L1D.block[set][way].mem_data[((check_addr%64)/8)]<<" "<<mm->second<<endl;
-                        if(ooo_cpu[i].L1D.block[set][way].mem_data[((check_addr%64))] != mm->second)
-                        {
+                        bool f=0;
+                        for(int j=0;j<64;j++)
+						{
+							if(ooo_cpu[i].L1D.block[set][way].mem_data[j]!=mm->second[j])
+							{
+                                cout<<j<<endl;
+                                f=1;    
+								not_match++;
+							}
+							else
+								match++;
+						}
+                        if(f==1)
                             cout<<check_addr<<endl;
-                            cout<<+ooo_cpu[i].L1D.block[set][way].mem_data[((check_addr%64))]<<" "<<+mm->second<<endl;
-                            not_match++;
-                            //cout<<"L1 Not Match"<<endl;    
-                        }
-                        else
-                            match++;
+                        
+						
                     }
                     else
                     {
-                        set = ooo_cpu[i].L2C.get_set(check_addr >> LOG2_BLOCK_SIZE);
+                        set = ooo_cpu[i].L2C.get_set(check_addr);
                         for(way=0;way<L2C_WAY;way++)
                         {
-                        //cout<<hex<<ooo_cpu[i].L1D.block[set][way].tag<<" "<<(check_addr)<<endl;
-                            if((ooo_cpu[i].L2C.block[set][way].full_addr == check_addr))   
+                            if((ooo_cpu[i].L2C.block[set][way].address == check_addr))   
                                 break;
-                        //map <uint64_t, uint64_t>::iterator mm_check = memory_map.find(ooo_cpu[i].L1D.block[j][k].tag)
                         }
                         if(way!=L2C_WAY)
                         {
-                            if(ooo_cpu[i].L2C.block[set][way].mem_data[((check_addr%64))] != mm->second)
-                            {
-                                not_match++;
-                                cout<<check_addr<<endl;
-                                cout<<+ooo_cpu[i].L2C.block[set][way].mem_data[((check_addr%64))]<<" "<<+mm->second<<endl;
-                                //cout<<"L2 Not Match"<<endl;
-                            }
-                            else
-                                match++;
+                        	for(int j=0;j<64;j++)
+							{
+							if(ooo_cpu[i].L2C.block[set][way].mem_data[j]!=mm->second[j])
+							{
+								not_match++;
+							}
+							else
+								match++;
+							}
+						
                         }
                         else
                         {
-                            set = uncore.LLC.get_set(check_addr >> LOG2_BLOCK_SIZE);
+                            set = uncore.LLC.get_set(check_addr);
                             for(way=0;way<LLC_WAY;way++)
                             {
-                                //cout<<hex<<ooo_cpu[i].L1D.block[set][way].tag<<" "<<(check_addr)<<endl;
-                                if((uncore.LLC.block[set][way].full_addr == check_addr))   
+                                if((uncore.LLC.block[set][way].address == check_addr))   
                                     break;
-                                //map <uint64_t, uint64_t>::iterator mm_check = memory_map.find(ooo_cpu[i].L1D.block[j][k].tag)
                             }                            
                             if(way!=LLC_WAY)
                             {
-                                if(uncore.LLC.block[set][way].mem_data[((check_addr%64))] != mm->second)
-                                    cout<<"LLC Not Match"<<endl;
+                        	for(int j=0;j<64;j++)
+							{
+							if(uncore.LLC.block[set][way].mem_data[j]!=mm->second[j])
+							{
+								not_match++;
+							}
+							else
+								match++;
+							}
+                                
                             }
                         
                         }

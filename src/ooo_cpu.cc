@@ -197,7 +197,7 @@ void O3_CPU::read_from_trace()
                 for (uint32_t i=0; i<MAX_INSTR_DESTINATIONS; i++) {
                     arch_instr.destination_registers[i] = current_instr.destination_registers[i];
                     arch_instr.destination_memory[i] = current_instr.destination_memory[i];
-                    arch_instr.destination_virtual_address[i] = current_instr.destination_memory[i];\
+                    arch_instr.destination_virtual_address[i] = current_instr.destination_memory[i];
                     for(int j=0;j<64;j++)
                     {
                         arch_instr.d_value[i][j]=current_instr.d_value[i][j];
@@ -620,8 +620,10 @@ void O3_CPU::fetch_instruction()
 	  trace_packet.asid[1] = 0;
 	  trace_packet.event_cycle = current_core_cycle[cpu];
 	  
-
+        if(trace_packet.address==0)
+        cout<<"ITLB"<<endl;
 	  int rq_index = ITLB.add_rq(&trace_packet);
+
 
 	  if(rq_index != -2)
 	    {
@@ -667,7 +669,9 @@ void O3_CPU::fetch_instruction()
 	    }
 	  l1i_prefetcher_cache_operate(fetch_packet.ip, (hit_way != -1), prefetch_hit);
 	      
-	  int rq_index = L1I.add_rq(&fetch_packet);
+	  if(fetch_packet.address==0)
+        cout<<"L1I"<<endl;
+      int rq_index = L1I.add_rq(&fetch_packet);
 
 	  if(rq_index != -2)
 	    {
@@ -1516,8 +1520,10 @@ void O3_CPU::operate_lsq()
                 cout << "[RTS0] " << __func__ << " instr_id: " << SQ.entry[sq_index].instr_id << " rob_index: " << SQ.entry[sq_index].rob_index << " is popped from to RTS0";
                 cout << " head: " << RTS0_head << " tail: " << RTS0_tail << endl; }); 
 
+                if(data_packet.address==0)
+                cout<<"DTLB2"<<endl;
                 int rq_index = DTLB.add_rq(&data_packet);
-
+                
                 if (rq_index == -2)
                     break; 
                 else 
@@ -1604,7 +1610,10 @@ void O3_CPU::operate_lsq()
                 cout << "[RTL0] " << __func__ << " instr_id: " << LQ.entry[lq_index].instr_id << " rob_index: " << LQ.entry[lq_index].rob_index << " is popped to RTL0";
                 cout << " head: " << RTL0_head << " tail: " << RTL0_tail << endl; }); 
 
+                if(data_packet.address==0)
+                    cout<<data_packet.instr_id<<endl;
                 int rq_index = DTLB.add_rq(&data_packet);
+
 
                 if (rq_index == -2)
                     break; // break here
@@ -1657,6 +1666,7 @@ void O3_CPU::operate_lsq()
         if (num_iteration == (LQ_SIZE-1))
             break;
     }
+
 }
 
 void O3_CPU::execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_index)
@@ -1703,14 +1713,14 @@ void O3_CPU::execute_store(uint32_t rob_index, uint32_t sq_index, uint32_t data_
                         LQ.entry[lq_index].translated = COMPLETED;
                         LQ.entry[lq_index].fetched = COMPLETED;
                         LQ.entry[lq_index].event_cycle = current_core_cycle[cpu];
-                        // for(int i=0;i<64;i++)
-                        // {
-                        //     if(LQ.entry[lq_index].mem_data_valid[i]==1)
-                        //     {
-                        //         SQ.entry[sq_index].mem_data_valid[i]=1;
-                        //         SQ.entry[sq_index].mem_data[i]=LQ.entry[lq_index].mem_data[i];
-                        //     }
-                        // }
+                         /*for(int i=0;i<64;i++)
+                         {
+                            //if(LQ.entry[lq_index].mem_data_valid[i]==1)
+                            //{
+                                 SQ.entry[sq_index].mem_data_valid[i]=1;
+                               SQ.entry[sq_index].mem_data[i]=LQ.entry[lq_index].mem_data[i];
+                             //}
+                         }*/
 
                         uint32_t fwr_rob_index = LQ.entry[lq_index].rob_index;
                         ROB.entry[fwr_rob_index].num_mem_ops--;
@@ -1767,7 +1777,10 @@ int O3_CPU::execute_load(uint32_t rob_index, uint32_t lq_index, uint32_t data_in
         data_packet.mem_data_valid[i]=LQ.entry[lq_index].mem_data_valid[i];
     }
 
+    if(data_packet.address==0)
+        cout<<"L1D"<<endl;
     int rq_index = L1D.add_rq(&data_packet);
+
     //if(data_packet.full_addr == 44977833733356 )
 
 
@@ -2296,7 +2309,43 @@ void O3_CPU::retire_rob()
             cout << "[ROB] " << __func__ << " instr_id: " << ROB.entry[ROB.head].instr_id << " head: " << ROB.head << " is not executed yet" << endl; });
             return;
         }
-
+        for(uint32_t i =0;i<NUM_INSTR_SOURCES;i++)
+        {
+            if(ROB.entry[ROB.head].source_memory[i])
+            {
+            uint64_t temp_pa = va_to_pa(ROB.cpu,ROB.entry[ROB.head].instr_id, ROB.entry[ROB.head].source_memory[i], ROB.entry[ROB.head].source_memory[i]>>LOG2_PAGE_SIZE, 0);
+            temp_pa >>= LOG2_PAGE_SIZE;
+            temp_pa <<= LOG2_PAGE_SIZE;
+            temp_pa |= (ROB.entry[ROB.head].source_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
+            temp_pa>>=LOG2_BLOCK_SIZE;
+            //if(temp_pa==702778648285)
+                //cout<<"s_mem_addr="<<ROB.entry[ROB.head].destination_memory[i]<<" instr_id="<<ROB.entry[ROB.head].instr_id<<endl;
+                //if(ROB.entry[ROB.head].instr_id<1999900)
+                for(int j=0;j<64;j++)
+                {
+                    /*if(temp_pa== 702778648285)
+                        if(j==48)
+                            cout<<"val="<<+ROB.entry[ROB.head].s_value[i][j]<<endl;*/
+                    memory_map[temp_pa][j]=ROB.entry[ROB.head].s_value[i][j];
+                }
+            //uint32_t temp_pa=(ROB.entry[ROB.head].data_pa << LOG2_PAGE_SIZE) | ( ROB.entry[ROB.head].source_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
+            /*if(temp_pa == 44977833471392)
+            {
+                //cout<<ROB.entry[ROB.head].source_memory[i]<<" ";
+                cout<<+ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)]<<" ";
+            }*/
+            /*map <uint64_t, uint8_t>::iterator mm_check = memory_map.find(temp_pa);
+            if(mm_check == memory_map.end())
+            {
+                memory_map.insert(pair<uint64_t,uint8_t>(temp_pa,ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)]));           
+            }        
+            else
+            {
+                mm_check->second=ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)];            
+            }*/
+            }        
+            
+        }
         for(uint32_t i =0;i<MAX_INSTR_DESTINATIONS;i++)
         {
             if(ROB.entry[ROB.head].destination_memory[i])
@@ -2307,47 +2356,34 @@ void O3_CPU::retire_rob()
             temp_pa |= (ROB.entry[ROB.head].destination_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1)); 
             
             //uint32_t temp_pa= (ROB.entry[ROB.head].data_pa << LOG2_PAGE_SIZE) | ( ROB.entry[ROB.head].destination_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
-            //if(temp_pa==44977833471392)
-                //cout<<+ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)]<<" ";
-            map <uint64_t, uint8_t>::iterator mm_check = memory_map.find(temp_pa);
-            if(mm_check == memory_map.end())
-            {
-                memory_map.insert(pair<uint64_t,uint8_t>(temp_pa,ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)]));           
-            }        
-            else
-            {
-                mm_check->second=ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)];            
-            }
+            temp_pa>>=LOG2_BLOCK_SIZE;
+            //if(temp_pa==702778648285)
+                //cout<<"d_mem_addr="<<ROB.entry[ROB.head].destination_memory[i]<<" instr_id="<<ROB.entry[ROB.head].instr_id<<endl;
+			map <uint64_t, map<int,uint8_t>>::iterator mm_check = memory_map.find(temp_pa);
+            //if(mm_check == memory_map.end())
+            //{
+                //f(ROB.entry[ROB.head].instr_id<1999900)
+				for(int j=0;j<64;j++)
+                {
+                    /*if(temp_pa==702778648285)
+                        if(j==48)
+                            cout<<"val="<<+ROB.entry[ROB.head].d_value[i][j]<<endl;*/
+					memory_map[temp_pa][j]=ROB.entry[ROB.head].d_value[i][j];
+                    /*if(temp_pa==702778651366)
+                        if(j==48)
+                            cout<<"val="<<+memory_map[temp_pa][j]<<endl;*/
+                }
+                //memory_map.insert(pair<uint64_t,uint8_t>(temp_pa,ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)]));           
+            //}        
+            //else
+            //{
+                //mm_check->second=ROB.entry[ROB.head].d_value[i][(ROB.entry[ROB.head].destination_memory[i]%64)];            
+            //}
             }        
             
         }
-        for(uint32_t i =0;i<NUM_INSTR_SOURCES;i++)
-        {
-            if(ROB.entry[ROB.head].source_memory[i])
-            {
-            uint64_t temp_pa = va_to_pa(ROB.cpu,ROB.entry[ROB.head].instr_id, ROB.entry[ROB.head].source_memory[i], ROB.entry[ROB.head].source_memory[i]>>LOG2_PAGE_SIZE, 0);
-            temp_pa >>= LOG2_PAGE_SIZE;
-            temp_pa <<= LOG2_PAGE_SIZE;
-            temp_pa |= (ROB.entry[ROB.head].source_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
 
-            //uint32_t temp_pa=(ROB.entry[ROB.head].data_pa << LOG2_PAGE_SIZE) | ( ROB.entry[ROB.head].source_memory[i] & ((1 << LOG2_PAGE_SIZE) - 1));
-            /*if(temp_pa == 44977833471392)
-            {
-                //cout<<ROB.entry[ROB.head].source_memory[i]<<" ";
-                cout<<+ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)]<<" ";
-            }*/
-            map <uint64_t, uint8_t>::iterator mm_check = memory_map.find(temp_pa);
-            if(mm_check == memory_map.end())
-            {
-                memory_map.insert(pair<uint64_t,uint8_t>(temp_pa,ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)]));           
-            }        
-            else
-            {
-                mm_check->second=ROB.entry[ROB.head].s_value[i][(ROB.entry[ROB.head].source_memory[i]%64)];            
-            }
-            }        
-            
-        }
+        
 
 
         // check store instruction
